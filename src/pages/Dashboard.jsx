@@ -15,6 +15,7 @@ import {
 
 const PAGE_SIZE = 8
 const SCORE_OPTIONS = ['A', 'B', 'C']
+const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3000').replace(/\/$/, '')
 
 function ScoreCheckboxGroup({ label, name, value, onChange, prefix }) {
   return (
@@ -59,7 +60,7 @@ function toAbsoluteFileUrl(value) {
   }
 
   if (value.startsWith('/prospectos/')) {
-    return `http://localhost:3000/api/prospects/file?path=${encodeURIComponent(value)}`
+    return `${API_BASE_URL}/api/prospects/file?path=${encodeURIComponent(value)}`
   }
 
   if (value.startsWith('http://') || value.startsWith('https://')) {
@@ -67,10 +68,10 @@ function toAbsoluteFileUrl(value) {
   }
 
   if (value.startsWith('/')) {
-    return `http://localhost:3000${value}`
+    return `${API_BASE_URL}${value}`
   }
 
-  return `http://localhost:3000/${value}`
+  return `${API_BASE_URL}/${value}`
 }
 
 function extractFileReference(value) {
