@@ -369,6 +369,10 @@ textarea:focus {
   background: #d7e6f8;
 }
 
+.auth-mode-btn {
+  margin-top: -4px;
+}
+
 .btn-danger {
   background: #fee4e2;
   color: #b42318;
