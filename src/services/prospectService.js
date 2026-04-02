@@ -1,34 +1,34 @@
 import api from '../api/axios'
 
 export async function getProspects() {
-  const { data } = await api.get('/api/prospects')
+  const { data } = await api.get('/prospects')
   return data
 }
 
 export async function searchProspects(query) {
-  const { data } = await api.get('/api/prospects/search', {
+  const { data } = await api.get('/prospects/search', {
     params: { q: query },
   })
   return data
 }
 
 export async function getProspectById(id) {
-  const { data } = await api.get(`/api/prospects/${id}`)
+  const { data } = await api.get(`/prospects/${id}`)
   return data
 }
 
 export async function createProspect(formData) {
-  const { data } = await api.post('/api/prospects', formData)
+  const { data } = await api.post('/prospects', formData)
   return data
 }
 
 export async function updateProspect(id, payload) {
-  const { data } = await api.put(`/api/prospects/${id}`, payload)
+  const { data } = await api.put(`/prospects/${id}`, payload)
   return data
 }
 
 export async function deleteProspect(id) {
-  const { data } = await api.delete(`/api/prospects/${id}`)
+  const { data } = await api.delete(`/prospects/${id}`)
   return data
 }
 
