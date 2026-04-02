@@ -12,10 +12,11 @@ import {
   searchProspects,
   updateProspect,
 } from '../services/prospectService'
+import { API_BASE_URL } from '../api/axios'
 
 const PAGE_SIZE = 8
 const SCORE_OPTIONS = ['A', 'B', 'C']
-const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3000').replace(/\/$/, '')
+const API_ORIGIN = API_BASE_URL.endsWith('/api') ? API_BASE_URL.slice(0, -4) : API_BASE_URL
 
 function ScoreCheckboxGroup({ label, name, value, onChange, prefix }) {
   return (
@@ -60,7 +61,7 @@ function toAbsoluteFileUrl(value) {
   }
 
   if (value.startsWith('/prospectos/')) {
-    return `${API_BASE_URL}/api/prospects/file?path=${encodeURIComponent(value)}`
+    return `${API_BASE_URL}/prospects/file?path=${encodeURIComponent(value)}`
   }
 
   if (value.startsWith('http://') || value.startsWith('https://')) {
@@ -68,10 +69,10 @@ function toAbsoluteFileUrl(value) {
   }
 
   if (value.startsWith('/')) {
-    return `${API_BASE_URL}${value}`
+    return `${API_ORIGIN}${value}`
   }
 
-  return `${API_BASE_URL}/${value}`
+  return `${API_ORIGIN}/${value}`
 }
 
 function extractFileReference(value) {
