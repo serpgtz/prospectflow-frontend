@@ -301,7 +301,7 @@ function getProspectId(prospect) {
 }
 
 function getPhone(prospect) {
-  return prospect?.telefono || prospect?.phone || prospect?.celular || ''
+  return prospect?.telefono || prospect?.tel || prospect?.phone || prospect?.celular || ''
 }
 
 const initialCreateForm = {
@@ -406,6 +406,7 @@ export default function Dashboard({ auth }) {
     if (
       !form.nombre ||
       !form.apellido_paterno ||
+      !form.apellido_materno ||
       !form.telefono ||
       !form.dependencia ||
       !form.ingresos ||
@@ -415,16 +416,15 @@ export default function Dashboard({ auth }) {
     ) {
       showToast(
         'error',
-        'Completa los campos obligatorios: nombre, apellido paterno, teléfono, dependencia, ingresos, perfil, interés y decisión.',
+        'Completa los campos obligatorios: nombre, apellido paterno, apellido materno, teléfono, dependencia, ingresos, perfil, interés y decisión.',
       )
       return
     }
 
-    const apellidos = [form.apellido_paterno, form.apellido_materno].filter(Boolean).join(' ').trim()
-
     const payload = new FormData()
     payload.append('nombre', form.nombre)
-    payload.append('apellidos', apellidos)
+    payload.append('apellido_paterno', form.apellido_paterno)
+    payload.append('apellido_materno', form.apellido_materno)
     payload.append('telefono', form.telefono)
     payload.append('dependencia', form.dependencia)
     payload.append('ingresos', form.ingresos)
@@ -532,6 +532,7 @@ export default function Dashboard({ auth }) {
     if (
       !editForm.nombre ||
       !editForm.apellido_paterno ||
+      !editForm.apellido_materno ||
       !editForm.telefono ||
       !editForm.dependencia ||
       !editForm.ingresos ||
@@ -541,22 +542,18 @@ export default function Dashboard({ auth }) {
     ) {
       showToast(
         'error',
-        'Completa los campos obligatorios: nombre, apellido paterno, teléfono, dependencia, ingresos, perfil, interés y decisión.',
+        'Completa los campos obligatorios: nombre, apellido paterno, apellido materno, teléfono, dependencia, ingresos, perfil, interés y decisión.',
       )
       return
     }
-
-    const apellidos = [editForm.apellido_paterno, editForm.apellido_materno]
-      .filter(Boolean)
-      .join(' ')
-      .trim()
 
     setIsUpdating(true)
 
     try {
       const payload = new FormData()
       payload.append('nombre', editForm.nombre)
-      payload.append('apellidos', apellidos)
+      payload.append('apellido_paterno', editForm.apellido_paterno)
+      payload.append('apellido_materno', editForm.apellido_materno)
       payload.append('telefono', editForm.telefono)
       payload.append('dependencia', editForm.dependencia)
       payload.append('ingresos', editForm.ingresos)
@@ -683,8 +680,6 @@ export default function Dashboard({ auth }) {
     const splitNames = splitLastNames(followUpProspect.apellidos)
     const apellidoPaterno = followUpProspect.apellido_paterno || splitNames.apellidoPaterno
     const apellidoMaterno = followUpProspect.apellido_materno || splitNames.apellidoMaterno
-    const apellidos = [apellidoPaterno, apellidoMaterno].filter(Boolean).join(' ').trim()
-
     const entryDate = formatCommentTimestamp(commentDate)
     const newCommentEntry = `[${entryDate}] ${trimmedComment}`
     const existingComments = String(followUpProspect.comentarios || '').trim()
@@ -697,7 +692,8 @@ export default function Dashboard({ auth }) {
     try {
       const payload = new FormData()
       payload.append('nombre', followUpProspect.nombre || '')
-      payload.append('apellidos', apellidos)
+      payload.append('apellido_paterno', apellidoPaterno)
+      payload.append('apellido_materno', apellidoMaterno)
       payload.append('telefono', getPhone(followUpProspect))
       payload.append('dependencia', followUpProspect.dependencia || '')
       payload.append('ingresos', followUpProspect.ingresos || '')

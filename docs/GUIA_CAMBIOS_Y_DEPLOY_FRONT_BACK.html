@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Guía de Cambios y Deploy - Frontend y Backend</title>
+  <style>
+    body { font-family: Arial, Helvetica, sans-serif; line-height: 1.5; color: #111; margin: 36px; }
+    h1, h2, h3 { color: #0b3d91; margin-top: 24px; }
+    h1 { font-size: 28px; margin-top: 0; }
+    h2 { font-size: 22px; }
+    h3 { font-size: 18px; }
+    p, li { font-size: 13.5px; }
+    code, pre { font-family: "Courier New", monospace; font-size: 12px; }
+    pre { background: #f4f6f8; border: 1px solid #d8dee4; border-radius: 6px; padding: 12px; overflow-x: auto; }
+    .box { border: 1px solid #c9d8ff; background: #f6f9ff; padding: 12px; border-radius: 8px; }
+    .warn { border-color: #ffd19b; background: #fff8ef; }
+    .ok { border-color: #a7e3bf; background: #f2fff7; }
+    .small { font-size: 12px; color: #444; }
+    @page { size: A4; margin: 14mm; }
+  </style>
+</head>
+<body>
+  <h1>Guía Clara: Cambios Locales y Deploy a Servidor (Frontend + Backend)</h1>
+
+  <p><strong>Objetivo:</strong> que siempre puedas hacer cambios en local, subirlos a GitHub y desplegarlos en producción sin romper nada.</p>
+
+  <div class="box ok">
+    <p><strong>Resumen rápido del flujo correcto:</strong></p>
+    <ol>
+      <li>Trabajas y pruebas en tu local.</li>
+      <li>Subes cambios a una rama de trabajo.</li>
+      <li>Fusionas a <code>main</code> solo cuando está validado.</li>
+      <li>En el servidor haces <code>git pull origin main</code>, build y recarga de servicios.</li>
+    </ol>
+  </div>
+
+  <h2>1) Ramas recomendadas (muy importante)</h2>
+  <ul>
+    <li><code>main</code>: producción (lo que vive en servidor).</li>
+    <li><code>develop</code> (opcional pero recomendado): integración/pruebas.</li>
+    <li><code>feature/*</code>: nuevas funcionalidades.</li>
+    <li><code>hotfix/*</code>: arreglos urgentes de producción.</li>
+  </ul>
+
+  <div class="box warn">
+    <p><strong>Regla de oro:</strong> no trabajes directo en <code>main</code>.</p>
+    <p>Siempre crea una rama de trabajo y luego merge a <code>main</code>.</p>
+  </div>
+
+  <h2>2) Flujo completo para FRONTEND</h2>
+
+  <h3>2.1 Trabajar en local</h3>
+  <pre><code>cd ~/ventas-app/frontend-ventas/frontend
+git checkout main
+git pull origin main
+git checkout -b feature/mi-cambio-frontend
+
+# haces tus cambios
+npm install
+npm run build
+# opcional: npm run dev
+</code></pre>
+
+  <h3>2.2 Commit y push a GitHub</h3>
+  <pre><code>git status
+git add .
+git commit -m "feat(frontend): descripcion clara del cambio"
+git push -u origin feature/mi-cambio-frontend</code></pre>
+
+  <h3>2.3 Merge a main</h3>
+  <p>Puedes hacerlo por Pull Request (recomendado) o por consola:</p>
+  <pre><code>git checkout main
+git pull origin main
+git merge --no-ff feature/mi-cambio-frontend
+git push origin main</code></pre>
+
+  <h3>2.4 Deploy en servidor (frontend)</h3>
+  <p>En tu VPS (ejemplo: <code>/var/www/frontend</code>):</p>
+  <pre><code>cd /var/www/frontend
+git checkout main
+git pull origin main
+
+# revisa variable de produccion (sin /api al final)
+cat .env
+# Debe ser: VITE_API_URL=http://prospectflow.it.com
+
+npm ci
+npm run build
+
+# si nginx sirve desde /var/www/frontend/dist, solo recarga nginx
+sudo systemctl reload nginx</code></pre>
+
+  <h3>2.5 Validación después de deploy (frontend)</h3>
+  <ol>
+    <li>Abre la web en incógnito o con hard refresh (<code>Ctrl + F5</code>).</li>
+    <li>En DevTools - Network, revisa que pegue a <code>/api/auth/...</code> y <code>/api/prospects/...</code>.</li>
+    <li>Confirma que no aparezca <code>localhost:3000</code> en requests.</li>
+  </ol>
+
+  <h2>3) Flujo completo para BACKEND</h2>
+
+  <h3>3.1 Trabajar en local</h3>
+  <pre><code>cd ~/ventas-app/backend-ventas
+git checkout main
+git pull origin main
+git checkout -b feature/mi-cambio-backend
+
+# haces cambios
+npm install
+npm run start   # o npm run dev
+</code></pre>
+
+  <h3>3.2 Commit y push</h3>
+  <pre><code>git status
+git add .
+git commit -m "fix(backend): descripcion clara del cambio"
+git push -u origin feature/mi-cambio-backend</code></pre>
+
+  <h3>3.3 Merge a main</h3>
+  <pre><code>git checkout main
+git pull origin main
+git merge --no-ff feature/mi-cambio-backend
+git push origin main</code></pre>
+
+  <h3>3.4 Deploy en servidor (backend)</h3>
+  <pre><code>cd /var/www/backend   # usa tu ruta real
+
+git checkout main
+git pull origin main
+
+# valida variables de entorno
+cat .env
+# revisar DB_HOST, DB_NAME, DB_USER, DB_PASSWORD, JWT_SECRET
+
+npm ci
+
+# reinicia proceso segun como lo levantes
+pm2 restart all
+# o: pm2 restart nombre-del-proceso
+
+# opcional logs
+pm2 logs --lines 80</code></pre>
+
+  <h3>3.5 Validación después de deploy (backend)</h3>
+  <pre><code>curl -i http://prospectflow.it.com/health
+curl -i http://prospectflow.it.com/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"correo@dominio.com","password":"123456"}'
+</code></pre>
+
+  <h2>4) Variables de entorno: regla clara</h2>
+  <ul>
+    <li>Frontend producción: <code>VITE_API_URL=http://prospectflow.it.com</code> (sin <code>/api</code>).</li>
+    <li>Frontend local: <code>VITE_API_URL=http://localhost:3000</code>.</li>
+    <li>Backend: nunca subas secretos reales a GitHub.</li>
+  </ul>
+
+  <div class="box warn">
+    <p><strong>Importante en Vite:</strong> si cambias <code>.env</code>, debes volver a correr <code>npm run build</code> para que aplique en producción.</p>
+  </div>
+
+  <h2>5) Checklist anti-errores (antes de subir y antes de deploy)</h2>
+  <h3>Antes de subir a GitHub</h3>
+  <ol>
+    <li><code>git status</code> limpio o con cambios esperados.</li>
+    <li>Build local en verde.</li>
+    <li>No subir <code>.env</code> real ni secretos.</li>
+    <li>Mensaje de commit claro.</li>
+  </ol>
+
+  <h3>Antes de deploy en servidor</h3>
+  <ol>
+    <li>Confirmar que ya hiciste merge a <code>main</code>.</li>
+    <li><code>git pull origin main</code> en servidor.</li>
+    <li>Variables correctas.</li>
+    <li>Build/restart según frontend o backend.</li>
+  </ol>
+
+  <h3>Después de deploy</h3>
+  <ol>
+    <li>Probar flujo real: login, listar prospectos, crear/editar.</li>
+    <li>Revisar Network (frontend) y logs (backend).</li>
+    <li>Si algo falla, rollback rápido al commit anterior.</li>
+  </ol>
+
+  <h2>6) Rollback rápido (si algo sale mal)</h2>
+  <p>En servidor, puedes volver al commit anterior estable:</p>
+  <pre><code>git log --oneline -n 5
+# elegir commit anterior bueno
+
+git checkout &lt;commit_bueno&gt;
+# frontend: npm run build && sudo systemctl reload nginx
+# backend: npm ci && pm2 restart all
+</code></pre>
+
+  <div class="box">
+    <p><strong>Recomendación final:</strong> usa Pull Requests para todo cambio a <code>main</code>. Te ahorra errores y te da historial claro.</p>
+  </div>
+
+  <p class="small">Documento generado para tu flujo actual de ProspectFlow (frontend + backend) con deploy en servidor Ubuntu y repos en GitHub.</p>
+</body>
+</html>

@@ -4,6 +4,9 @@ export default function Login({ auth }) {
   const [mode, setMode] = useState('login')
   const [form, setForm] = useState({
     nombre: '',
+    apellido_paterno: '',
+    apellido_materno: '',
+    tel: '',
     email: '',
     password: '',
     confirmPassword: '',
@@ -30,8 +33,18 @@ export default function Login({ auth }) {
     setStatus('')
 
     if (isRegisterMode) {
-      if (!form.nombre || !form.email || !form.password || !form.confirmPassword) {
-        setError('Completa nombre, email, password y confirmación.')
+      if (
+        !form.nombre ||
+        !form.apellido_paterno ||
+        !form.apellido_materno ||
+        !form.tel ||
+        !form.email ||
+        !form.password ||
+        !form.confirmPassword
+      ) {
+        setError(
+          'Completa nombre, apellido paterno, apellido materno, teléfono, email, password y confirmación.',
+        )
         return
       }
 
@@ -47,6 +60,9 @@ export default function Login({ auth }) {
 
       const result = await auth.register({
         nombre: form.nombre.trim(),
+        apellido_paterno: form.apellido_paterno.trim(),
+        apellido_materno: form.apellido_materno.trim(),
+        tel: form.tel.trim(),
         email: form.email.trim(),
         password: form.password,
       })
@@ -106,6 +122,45 @@ export default function Login({ auth }) {
                 value={form.nombre}
                 onChange={handleChange}
                 placeholder="Tu nombre"
+              />
+            </label>
+          )}
+
+          {isRegisterMode && (
+            <label>
+              Apellido paterno
+              <input
+                type="text"
+                name="apellido_paterno"
+                value={form.apellido_paterno}
+                onChange={handleChange}
+                placeholder="Apellido paterno"
+              />
+            </label>
+          )}
+
+          {isRegisterMode && (
+            <label>
+              Apellido materno
+              <input
+                type="text"
+                name="apellido_materno"
+                value={form.apellido_materno}
+                onChange={handleChange}
+                placeholder="Apellido materno"
+              />
+            </label>
+          )}
+
+          {isRegisterMode && (
+            <label>
+              Teléfono
+              <input
+                type="text"
+                name="tel"
+                value={form.tel}
+                onChange={handleChange}
+                placeholder="6641234567"
               />
             </label>
           )}
