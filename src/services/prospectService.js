@@ -1,13 +1,15 @@
 import api from '../api/axios'
 
-export async function getProspects() {
-  const { data } = await api.get('/prospects')
+export async function getProspects({ page = 1, limit = 5 } = {}) {
+  const { data } = await api.get('/prospects', {
+    params: { page, limit },
+  })
   return data
 }
 
-export async function searchProspects(query) {
+export async function searchProspects(query, { page = 1, limit = 5 } = {}) {
   const { data } = await api.get('/prospects/search', {
-    params: { q: query },
+    params: { q: query, page, limit },
   })
   return data
 }

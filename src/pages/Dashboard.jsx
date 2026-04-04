@@ -14,7 +14,7 @@ import {
 } from '../services/prospectService'
 import { API_BASE_URL } from '../api/axios'
 
-const PAGE_SIZE = 8
+const PAGE_SIZE = 5
 const SCORE_OPTIONS = ['A', 'B', 'C']
 const API_ORIGIN = API_BASE_URL.endsWith('/api') ? API_BASE_URL.slice(0, -4) : API_BASE_URL
 
@@ -324,6 +324,7 @@ const initialCreateForm = {
 
 export default function Dashboard({ auth }) {
   const editSectionRef = useRef(null)
+  const tableSectionRef = useRef(null)
   const [prospects, setProspects] = useState([])
   const [concentrado, setConcentrado] = useState({
     caliente: 0,
@@ -333,6 +334,7 @@ export default function Dashboard({ auth }) {
   })
   const [query, setQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
+  const [totalRecords, setTotalRecords] = useState(0)
   const [toast, setToast] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -350,37 +352,64 @@ export default function Dashboard({ auth }) {
 
   const closeToast = () => setToast(null)
 
-  const fetchProspects = useCallback(async (searchTerm = '') => {
+  const scrollToProspectsTable = () => {
+    if (!tableSectionRef.current) {
+      return
+    }
+
+    tableSectionRef.current.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    })
+  }
+
+  const fetchProspects = useCallback(async ({ searchTerm = '', page = 1 } = {}) => {
     setIsLoading(true)
 
     try {
-      const data = searchTerm ? await searchProspects(searchTerm) : await getProspects()
-      setProspects(normalizeList(data))
-      setConcentrado(searchTerm ? { caliente: 0, tibio: 0, frio: 0, sin_estado: 0 } : normalizeConcentrado(data))
-      setCurrentPage(1)
+      const data = searchTerm
+        ? await searchProspects(searchTerm, { page, limit: PAGE_SIZE })
+        : await getProspects({ page, limit: PAGE_SIZE })
+
+      const normalizedList = normalizeList(data)
+      const paginationTotal = Number(data?.pagination?.total)
+      const resolvedTotal = Number.isFinite(paginationTotal)
+        ? paginationTotal
+        : Number(data?.total || normalizedList.length)
+      const resolvedPage = Number(data?.pagination?.page || page)
+
+      setProspects(normalizedList)
+      setTotalRecords(Math.max(0, resolvedTotal))
+      setCurrentPage(resolvedPage)
+      setConcentrado(
+        searchTerm
+          ? { caliente: 0, tibio: 0, frio: 0, sin_estado: 0 }
+          : normalizeConcentrado(data),
+      )
     } catch (error) {
       const message = getErrorMessage(error, 'No se pudo cargar la lista de prospectos.')
       showToast('error', message)
       setProspects([])
+      setTotalRecords(0)
       setConcentrado({ caliente: 0, tibio: 0, frio: 0, sin_estado: 0 })
     } finally {
       setIsLoading(false)
     }
   }, [])
 
-  const refreshCurrentList = async () => {
-    await fetchProspects(query.trim())
+  const refreshCurrentList = async (targetPage = currentPage) => {
+    await fetchProspects({ searchTerm: query.trim(), page: targetPage })
   }
 
   useEffect(() => {
-    fetchProspects('')
+    fetchProspects({ searchTerm: '', page: 1 })
   }, [fetchProspects])
 
   useEffect(() => {
     const trimmed = query.trim()
 
     const timeout = window.setTimeout(() => {
-      fetchProspects(trimmed)
+      fetchProspects({ searchTerm: trimmed, page: 1 })
     }, 350)
 
     return () => window.clearTimeout(timeout)
@@ -453,9 +482,12 @@ export default function Dashboard({ auth }) {
 
     try {
       await createProspect(payload)
+      window.alert('Prospecto creado con exito.')
       showToast('success', 'Prospecto creado correctamente.')
       setForm(initialCreateForm)
-      await refreshCurrentList()
+      setQuery('')
+      await fetchProspects({ searchTerm: '', page: 1 })
+      scrollToProspectsTable()
     } catch (error) {
       const message = getErrorMessage(error, 'No se pudo crear el prospecto.')
       showToast('error', message)
@@ -624,7 +656,7 @@ export default function Dashboard({ auth }) {
     }
   }
 
-  const totalResults = useMemo(() => prospects.length, [prospects])
+  const totalResults = useMemo(() => totalRecords, [totalRecords])
   const totalConcentrado = useMemo(() => {
     return concentrado.caliente + concentrado.tibio + concentrado.frio + concentrado.sin_estado
   }, [concentrado])
@@ -634,17 +666,12 @@ export default function Dashboard({ auth }) {
     [totalResults],
   )
 
-  const pagedProspects = useMemo(() => {
-    const start = (currentPage - 1) * PAGE_SIZE
-    return prospects.slice(start, start + PAGE_SIZE)
-  }, [prospects, currentPage])
-
   const handlePageChange = (nextPage) => {
-    if (nextPage < 1 || nextPage > totalPages) {
+    if (nextPage < 1 || nextPage > totalPages || nextPage === currentPage) {
       return
     }
 
-    setCurrentPage(nextPage)
+    fetchProspects({ searchTerm: query.trim(), page: nextPage })
   }
 
   const openPreview = async (url, label, type = 'other') => {
@@ -786,10 +813,10 @@ export default function Dashboard({ auth }) {
         <p className="search-status">Total en concentrado: {totalConcentrado}</p>
       </section>
 
-      <section className="card">
+      <section className="card" ref={tableSectionRef}>
         <h2>Prospectos</h2>
         <ProspectTable
-          prospects={pagedProspects}
+          prospects={prospects}
           isLoading={isLoading}
           onRowClick={openFollowUpModal}
           onEdit={startEdit}
