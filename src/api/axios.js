@@ -12,6 +12,8 @@ api.interceptors.request.use(
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
+    } else if (import.meta.env.DEV && typeof config.url === 'string' && config.url.startsWith('/prospects')) {
+      console.warn('[auth] Request sin token hacia ruta protegida:', config.url)
     }
 
     return config

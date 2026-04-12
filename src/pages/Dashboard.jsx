@@ -8,6 +8,7 @@ import Toast from '../components/Toast'
 import {
   createProspect,
   deleteProspect,
+  downloadProspectDocument,
   getProspects,
   searchProspects,
   updateProspect,
@@ -61,7 +62,7 @@ function toAbsoluteFileUrl(value) {
   }
 
   if (value.startsWith('/prospectos/')) {
-    return `${API_BASE_URL}/prospects/file?path=${encodeURIComponent(value)}`
+    return `/prospects/file?path=${encodeURIComponent(value)}`
   }
 
   if (value.startsWith('http://') || value.startsWith('https://')) {
@@ -303,6 +304,12 @@ function getProspectId(prospect) {
 
 function getPhone(prospect) {
   return prospect?.telefono || prospect?.tel || prospect?.phone || prospect?.celular || ''
+}
+
+function revokeObjectUrlIfNeeded(value) {
+  if (typeof value === 'string' && value.startsWith('blob:')) {
+    URL.revokeObjectURL(value)
+  }
 }
 
 const initialCreateForm = {
@@ -680,12 +687,74 @@ export default function Dashboard({ auth }) {
       return
     }
 
-    setPreviewDoc({ url, label, type })
+    try {
+      const { blob, contentType } = await downloadProspectDocument(url)
+      const objectUrl = URL.createObjectURL(blob)
+
+      setPreviewDoc((previous) => {
+        if (previous?.isObjectUrl) {
+          revokeObjectUrlIfNeeded(previous.url)
+        }
+
+        return { url: objectUrl, label, type, contentType, isObjectUrl: true }
+      })
+    } catch (error) {
+      const message = getErrorMessage(error, 'No se pudo cargar el documento.')
+      showToast('error', message)
+    }
   }
 
   const closePreview = () => {
-    setPreviewDoc(null)
+    setPreviewDoc((previous) => {
+      if (previous?.isObjectUrl) {
+        revokeObjectUrlIfNeeded(previous.url)
+      }
+
+      return null
+    })
   }
+
+  const openDocument = async (url, label) => {
+    if (!url) {
+      showToast('error', 'El documento no tiene una URL válida.')
+      return
+    }
+
+    try {
+      const { blob, contentType } = await downloadProspectDocument(url)
+      const objectUrl = URL.createObjectURL(blob)
+      const openedWindow = window.open(objectUrl, '_blank', 'noopener,noreferrer')
+
+      if (!openedWindow) {
+        const extension = contentType.includes('pdf')
+          ? 'pdf'
+          : contentType.startsWith('image/')
+            ? 'jpg'
+            : 'bin'
+        const safeLabel = String(label || 'documento').toLowerCase().replace(/\s+/g, '-')
+        const anchor = document.createElement('a')
+
+        anchor.href = objectUrl
+        anchor.download = `${safeLabel}.${extension}`
+        document.body.appendChild(anchor)
+        anchor.click()
+        document.body.removeChild(anchor)
+      }
+
+      window.setTimeout(() => revokeObjectUrlIfNeeded(objectUrl), 60000)
+    } catch (error) {
+      const message = getErrorMessage(error, 'No se pudo abrir el documento.')
+      showToast('error', message)
+    }
+  }
+
+  useEffect(() => {
+    return () => {
+      if (previewDoc?.isObjectUrl) {
+        revokeObjectUrlIfNeeded(previewDoc.url)
+      }
+    }
+  }, [previewDoc])
 
   const handleSaveFollowUp = async ({ commentDate, newComment, nextContactDate }) => {
     if (!followUpProspect) {
@@ -822,6 +891,7 @@ export default function Dashboard({ auth }) {
           onEdit={startEdit}
           onDelete={handleDeleteProspect}
           onPreviewDoc={openPreview}
+          onOpenDoc={openDocument}
           deletingId={deletingId}
         />
         <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { downloadProspectDocument } from '../services/prospectService'
 
 function getPhone(prospect) {
   return prospect?.telefono || prospect?.phone || prospect?.celular || '-'
@@ -148,6 +149,48 @@ function CommentCell({ text }) {
   )
 }
 
+function SecureImageThumb({ url, alt }) {
+  const [src, setSrc] = useState('')
+
+  useEffect(() => {
+    let isActive = true
+    let objectUrl = ''
+
+    const loadImage = async () => {
+      try {
+        const { blob, contentType } = await downloadProspectDocument(url)
+        if (!contentType.startsWith('image/')) {
+          return
+        }
+
+        objectUrl = URL.createObjectURL(blob)
+        if (isActive) {
+          setSrc(objectUrl)
+        }
+      } catch (_error) {
+        // Si falla miniatura, mantenemos la tabla funcional sin romper el flujo.
+      }
+    }
+
+    if (url) {
+      loadImage()
+    }
+
+    return () => {
+      isActive = false
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl)
+      }
+    }
+  }, [url])
+
+  if (!src) {
+    return <span className="status-text">Imagen</span>
+  }
+
+  return <img src={src} alt={alt} className="doc-thumb" loading="lazy" />
+}
+
 export default function ProspectTable({
   prospects = [],
   isLoading = false,
@@ -155,6 +198,7 @@ export default function ProspectTable({
   onDelete,
   onRowClick = null,
   onPreviewDoc = () => {},
+  onOpenDoc = () => {},
   deletingId = null,
 }) {
   const tableWrapperRef = useRef(null)
@@ -278,12 +322,7 @@ export default function ProspectTable({
                     {comprobanteLink ? (
                       <div className="doc-row">
                         {comprobanteType === 'image' && (
-                          <img
-                            src={comprobanteLink}
-                            alt="Miniatura comprobante"
-                            className="doc-thumb"
-                            loading="lazy"
-                          />
+                          <SecureImageThumb url={comprobanteLink} alt="Miniatura comprobante" />
                         )}
                         <button
                           type="button"
@@ -295,14 +334,16 @@ export default function ProspectTable({
                         >
                           Vista previa
                         </button>
-                        <a
-                          href={comprobanteLink}
-                          target="_blank"
-                          rel="noreferrer"
-                          onClick={(event) => event.stopPropagation()}
+                        <button
+                          type="button"
+                          className="btn btn-secondary btn-small"
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            onOpenDoc(comprobanteLink, 'Comprobante')
+                          }}
                         >
                           Abrir
-                        </a>
+                        </button>
                       </div>
                     ) : (
                       <span>-</span>
@@ -310,12 +351,7 @@ export default function ProspectTable({
                     {identificacionLink ? (
                       <div className="doc-row">
                         {identificacionType === 'image' && (
-                          <img
-                            src={identificacionLink}
-                            alt="Miniatura identificación"
-                            className="doc-thumb"
-                            loading="lazy"
-                          />
+                          <SecureImageThumb url={identificacionLink} alt="Miniatura identificación" />
                         )}
                         <button
                           type="button"
@@ -327,14 +363,16 @@ export default function ProspectTable({
                         >
                           Vista previa
                         </button>
-                        <a
-                          href={identificacionLink}
-                          target="_blank"
-                          rel="noreferrer"
-                          onClick={(event) => event.stopPropagation()}
+                        <button
+                          type="button"
+                          className="btn btn-secondary btn-small"
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            onOpenDoc(identificacionLink, 'Identificacion')
+                          }}
                         >
                           Abrir
-                        </a>
+                        </button>
                       </div>
                     ) : (
                       <span>-</span>
